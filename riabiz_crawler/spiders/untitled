@@ -1,0 +1,40 @@
+def normalize(response, blob_class):
+    try:
+      blob = response.xpath('//div[@id="'+blob_class + '"]').extract()[0]
+      url = ''
+      if response.xpath('//div[@id="'+blob_class + '"]/a/@href').extract() != []:
+        url = str(response.xpath('//div[@id="'+blob_class + '"]/a/@href').extract()[0])
+      result = []
+      ignore_list = ['',"\n",'\n']
+      new_list = []
+      print blob.split("\t")[1:]
+      for e in blob.split("\t")[1:]:
+          my_str = str(e).strip()
+          if my_str == '':
+              continue
+          if "<br>" in my_str:
+              for i in my_str.split("<br>"):
+                  if i == ''  or '<script type=' in i:
+                      continue
+                  if '<a href=' in i:
+                      result.append(url)
+                      continue
+                  else:
+                    result.append(i)
+          else: 
+            result.append(my_str)    
+      return "$$$$$".join(result)    
+    except Exception, e:
+      print str(e) 
+
+blob_class = 'ria_info'
+normalize(response,blob_class)      
+
+def normalize_etc(response):
+    result = []
+    try:
+      for li in response.xpath('//div[@id="etcetera"]/ul/li'):
+          result.append(li.extract()[4:-5].replace('<strong>','').replace('</strong>',''))
+      return "$$$$$".join(result)    
+    except Exception, e:
+      print str(e) 
