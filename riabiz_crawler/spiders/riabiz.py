@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import scrapy
+import time
 
 url_hash = {
     "Asset Custodian":"http://www.riabiz.com/d?cat=64270",
@@ -23,24 +24,26 @@ class RiabizSpider(scrapy.Spider):
           url = ''
           if response.xpath('//div[@id="'+blob_class + '"]/a/@href').extract() != []:
             url = str(response.xpath('//div[@id="'+blob_class + '"]/a/@href').extract()[0])
-          result = []
+          result = [url]
           ignore_list = ['',"\n",'\n']
           new_list = []
           for e in blob.split("\t")[1:]:
               my_str = str(e).strip()
-              if my_str == '':
+              if my_str == '' or my_str == '</div>':
                   continue
               if "<br>" in my_str:
                   for i in my_str.split("<br>"):
                       if i == ''  or '<script type=' in i or '</div>' in i:
                           continue
                       if '<a href=' in i:
-                          result.append(url)
                           continue
                       else:
                         result.append(i)
               else: 
-                result.append(my_str)    
+                result.append(my_str)  
+          if blob_class == 'corporate_info':
+              firm_name = response.xpath('//div[@class="listing-company-name"]/text()').extract()[0]     
+              result.insert(0, firm_name.strip())   
           return "$$$$$".join(result)    
         except Exception, e:
           print str(e)  
@@ -57,11 +60,12 @@ class RiabizSpider(scrapy.Spider):
     def parse(self, response):
         firms = response.xpath('//td[@class="dir-toc-title"]')
         for idx, firm in enumerate(firms):
-            if idx > 6:
-                break
+            # if idx > 0:
+            #     break
             # item = RiabizDirItem()
             # item['firm_name'] = firm.xpath('h3/a/text()').extract()[0].encode('ascii', 'ignore').strip()
             # yield item
+            time.sleep(0.3)
             directory_url = firm.xpath('h3/a/@href').extract()[0].encode('ascii', 'ignore').strip()
             yield scrapy.Request(directory_url, callback=self.parse_dir_contents)
             # f.write(str(firm_name) + "\t" + str(directory_url) +"\n")
@@ -72,8 +76,10 @@ class RiabizSpider(scrapy.Spider):
         ria_blob = ""
         etc_blob = ""
         corporate_info_blob = self.normalize(response, 'corporate_info')
+        print corporate_info_blob
         if response.xpath('//div[@id="ria_info"]') != []:
             ria_blob = self.normalize(response, 'ria_info')
+        print ria_blob
         if response.xpath('//div[@id="etcetera"]/ul/li') != []:
             etc_blob = self.normalize_etc(response)
         filename = "_"
@@ -83,7 +89,7 @@ class RiabizSpider(scrapy.Spider):
         # print inv_url_hash[url]
         # print filename     
         with open(filename, 'a') as f:
-            f.write(corporate_info_blob + '$$$$$' + ria_blob + '$$$$$' + corporate_info_blob+"\n")
+            f.write(corporate_info_blob + '$$$$$' + ria_blob + '$$$$$' + etc_blob+"\n")
 
         # company_info_blob = response.xpath('//div[@id="corporate_info"]').extract()[0].split("\t")
         # ria_info_blob = response.xpath('//div[@id="ria_info"]').extract()[0].split("\t")
